@@ -1,11 +1,8 @@
 app-id: fr.ffs2play.ffs2play
 
-runtime: org.freedesktop.Platform
-runtime-version: "19.08"
-sdk: org.freedesktop.Sdk
-
-base: org.electronjs.Electron2.BaseApp
-base-version: "19.08"
+runtime: org.kde.Platform
+runtime-version: "5.12"
+sdk: org.kde.Sdk
 
 command: ffs2play-app
 
