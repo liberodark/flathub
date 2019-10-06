@@ -7,15 +7,12 @@ sdk: org.kde.Sdk
 command: ffs2play-app
 
 finish-args:
-  # X11/Wayland
   - --socket=x11
   - --share=ipc
   - --socket=wayland
   - --device=dri
-  # Sync
+  - --socket=pulseaudio
   - --share=network
-  # Filesystem access
-  - --filesystem=host
 
 modules:
 
