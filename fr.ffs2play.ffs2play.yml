@@ -4,7 +4,9 @@ runtime: org.kde.Platform
 runtime-version: "5.12"
 sdk: org.kde.Sdk
 
-command: ffs2play-app
+command: ffs2play
+rename-icon: plane
+rename-desktop-file: FFS2Play.desktop
 
 finish-args:
   - --socket=x11
@@ -14,53 +16,71 @@ finish-args:
   - --socket=pulseaudio
   - --share=network
 
+cleanup:
+  - "*.a"
+  - "*.la"
+  - /include
+  - /lib/pkgconfig
+
 modules:
 
   - name: ffs2play
-    buildsystem: simple
-    build-commands:
-        - install -Dm755 ffs2play-app.sh /app/bin/ffs2play-app
-        - install -Dm755 apply_extra.sh /app/bin/apply_extra
-        - install -Dm644 ${FLATPAK_ID}.appdata.xml -t /app/share/metainfo/
-        - install -Dm755 /usr/bin/desktop-file-edit -t /app/bin/
-        - install -Dm755 /usr/bin/ar -t /app/bin/
-        - install -Dm755 /usr/lib/$(gcc -print-multiarch)/libbfd-*.so -t /app/lib/
-        - install -Dm644 ${FLATPAK_ID}.appdata.xml -t /app/share/appdata
+    buildsystem: qmake
+    config-opts:
+      - INCLUDEPATH+=/app/include/cryptopp
+      - INCLUDEPATH+=/app/include/miniupnpc
+    post-install:
+      - install -Dm644 translations/*.qm -t /app/share/ffs2play/translations
+      #FIXME resize this icon
+      - install -Dm644 /app/share/icons/hicolor/{72x72,64x64}/apps/plane.png
+      - desktop-file-edit 
+        --set-key=Exec --set-value=ffs2play
+        --set-key=Version --set-value=1.0
+        /app/share/applications/FFS2Play.desktop
+      - install -Dm644 ${FLATPAK_ID}.appdata.xml -t /app/share/appdata
     sources:
-        - type: file
-          path: fr.ffs2play.ffs2play.appdata.xml
+      - type: git
+        url: "https://bitbucket.org/FFS2/ffs2play.git"
+        commit: "7969405"
+      - type: shell
+        commands:
+          - sed 's|PREFIX = /usr||' -i ffs2play.pro
+      - type: file
+        path: fr.ffs2play.ffs2play.appdata.xml
+    modules:
 
-        - type: archive
-          only-arches:
-            - "x86_64"
-          filename: FFS2-ffs2play-c6fa99db2eaf.zip
-          url: https://bitbucket.org/FFS2/ffs2play/get/c6fa99db2eaf.zip
-          sha256: 3ef0b5d47ae05b49a775afa6112062a34870ff68caf7da2122db4ae68c0a7b3d
-          size: 2669622
+      - name: protobuf
+        config-opts:
+          - --with-zlib
+          - --with-pic
+        sources:
+          - type: archive
+            url: "https://github.com/protocolbuffers/protobuf/releases/download/v3.9.0/protobuf-all-3.9.0.tar.gz"
+            sha256: 3fd2faf435246a60537b7ad7a2d273df2eecad5cf76f812529dbde7183b2e6b7
+        cleanup:
+          - /bin
 
-        - type: script
-          dest-filename: apply_extra.sh
-          commands:
-            - FLATPAK_ID=fr.ffs2play.ffs2play
-            - set -e
-            - unzip FFS2-ffs2play-c6fa99db2eaf.zip
-            - pushd FFS2-ffs2play-c6fa99db2eaf/ || exit
-            - bash build-release.sh
-            - mv ffs2play.icns ffs2play.png 
-            - mv build-release/ffs2play ./
-            - mkdir -p export/share
-            - mv ./{icons,applications} export/share
-            - rename ffs2play-app ${FLATPAK_ID}
-                export/share/icons/hicolor/*/*/*.png
-                export/share/applications/*.desktop
-            - desktop-file-edit
-                --set-key=Exec --set-value=ffs2play-app
-                --set-key=Icon --set-value=${FLATPAK_ID}
-                export/share/applications/${FLATPAK_ID}.desktop
-            - popd || exit
-            - rm -r FFS2-ffs2play-c6fa99db2eaf.zip FFS2-ffs2play-c6fa99db2eaf
+      - name: cryptopp
+        only-arches:
+          - x86_64
+          - "i386"
+        no-autogen: true
+        make-args:
+          - shared
+        make-install-args:
+          - PREFIX=/app
+        sources:
+          - type: archive
+            url: "https://github.com/weidai11/cryptopp/archive/CRYPTOPP_8_2_0.tar.gz"
+            sha256: e3bcd48a62739ad179ad8064b523346abb53767bcbefc01fe37303412292343e
+        cleanup:
+          - /bin
+          - /share
 
-        - type: script
-          dest-filename: ffs2play-app.sh
-          commands:
-            - exec /app/extra/ffs2play/ffs2play-app "$@"
+      - name: miniupnpc
+        subdir: miniupnpc
+        buildsystem: cmake-ninja
+        sources:
+          - type: archive
+            url: "https://github.com/miniupnp/miniupnp/archive/miniupnpc_2_1.tar.gz"
+            sha256: 19c5b6cf8f3fc31d5e641c797b36ecca585909c7f3685a5c1a64325340537c94
